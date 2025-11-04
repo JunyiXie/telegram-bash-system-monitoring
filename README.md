@@ -19,11 +19,16 @@ A versatile bash script to monitor various system resources and alert via Telegr
 
 The `system-monitoring.sh` script offers various command-line options for monitoring system resources:
 
+### Required Arguments:
+- `--GROUP-ID <group_id>`: Telegram group ID where alerts will be sent (required).
+- `--BOT-TOKEN <bot_token>`: Telegram bot token for authentication (required).
+
+### Optional Arguments:
 - `--NAME <ServerName>`: Assign a custom name to the server to distinguish notifications from different servers.
 - `--CPU <threshold>`: Set a CPU usage alert threshold as a percentage (%).
 - `--RAM <threshold>`: Set a RAM usage alert threshold as a percentage (%).
 - `--DISK <threshold>`: Set a disk usage alert threshold as a percentage (%).
-- `--DISK-TARGET <mount_point> `: Specifies the mount point to monitor for disk usage. Must be used with --DISK.
+- `--DISK-TARGET <mount_point>`: Specifies the mount point to monitor for disk usage. Must be used with --DISK.
 - `--TEMP <threshold>`: Set a CPU temperature alert threshold in degrees Celsius (°C).
 - `--LA1 [threshold]`: Set a threshold for 1-minute Load Average. Without a specified threshold, the script uses an auto-threshold based on the hardware.
 - `--LA5 [threshold]`: Set a threshold for 5-minute Load Average. If omitted, the script defaults to an auto-threshold of 75% of the CPU cores.
@@ -66,7 +71,7 @@ Note: The script will check for any additional required packages during runtime 
 Download the script directly using `curl`:
 
 ```bash
-curl -O https://raw.githubusercontent.com/russellgrapes/telegram-bash-system-monitoring/main/system-monitoring.sh
+curl -O https://raw.githubusercontent.com/junyixie/telegram-bash-system-monitoring/main/system-monitoring.sh
 ```
 
 ## Make the Script Executable
@@ -79,12 +84,16 @@ chmod +x system-monitoring.sh
 
 ## Running the Script
 
-When you run the script for the first time, it will prompt you to create a secrets file with your Telegram GROUP_ID and BOT_TOKEN. The script will then test the connection to Telegram. If successful, it will send a test message to your Telegram group and print a success message. If there is an error, it will notify you and exit.
+Run the script with your Telegram credentials and the desired monitoring thresholds:
 
-Run the script with the desired thresholds:
 ```bash
-./system-monitoring.sh --LA1 --LA5 --CPU 80 --RAM 70 --DISK 90 --SSH-LOGIN
+./system-monitoring.sh \
+  --GROUP-ID -<your-tg-group-id> \
+  --BOT-TOKEN <your-tg-bot-token> \
+  --CPU 80 --RAM 70 --DISK 90 --SSH-LOGIN
 ```
+
+**Note**: Replace the GROUP_ID and BOT_TOKEN values with your actual Telegram credentials (see "Setting up Telegram Bot and Group" section below).
 
 The monitoring script is now ready to use. It will check the specified thresholds and send alerts to your Telegram group when conditions are met. For best practice, consider adding it to your crontab with the reboot option to ensure it runs automatically after each system restart.
 
@@ -99,24 +108,30 @@ crontab -e
 Add the following line to run the script at reboot:
 
 ```bash
-@reboot /path/to/system-monitoring.sh --LA15 --CPU 80 --RAM 70 --DISK 90 --SSH-LOGIN --SFTP-MONITOR --REBOOT
+@reboot /path/to/system-monitoring.sh --GROUP-ID -<your-tg-group-id> --BOT-TOKEN <your-tg-bot-token> --LA15 --CPU 80 --RAM 70 --DISK 90 --SSH-LOGIN --SFTP-MONITOR --REBOOT
 
 # Optional monitoring for other mount points
-@reboot /path/to/system-monitoring.sh --DISK 90 --DISK-TARGET /mnt/my_disk1
-@reboot /path/to/system-monitoring.sh --DISK 90 --DISK-TARGET /mnt/my_disk2
+@reboot /path/to/system-monitoring.sh --GROUP-ID -<your-tg-group-id> --BOT-TOKEN <your-tg-bot-token> --DISK 90 --DISK-TARGET /mnt/my_disk1
+@reboot /path/to/system-monitoring.sh --GROUP-ID -<your-tg-group-id> --BOT-TOKEN <your-tg-bot-token> --DISK 90 --DISK-TARGET /mnt/my_disk2
 ```
 
-Replace `/path/to/system-monitoring.sh` with the actual path to your script.
+**Important**: Replace `/path/to/system-monitoring.sh` with the actual path to your script, and update the GROUP_ID and BOT_TOKEN with your actual Telegram credentials.
 
 ## Configuration
 
-To configure the script settings, open it with your text editor. For example, using nano:
+The script requires Telegram credentials to be passed via command line arguments (--GROUP-ID and --BOT-TOKEN). 
+
+To configure other script settings such as check intervals and excluded IPs, open it with your text editor. For example, using nano:
 
 ```bash
 nano system-monitoring.sh
 ```
 
-The script now automatically handles the creation of the secrets file and tests the connection to Telegram. If you need to update your GROUP_ID or BOT_TOKEN, you can delete the secrets file located at `/etc/telegram.secrets` and rerun the script to recreate it.
+Key configuration variables in the script:
+- `FAST_CHECK_INTERVAL`: Interval for urgent resource checks (default: 60 seconds)
+- `SLOW_CHECK_INTERVAL`: Interval for less urgent checks (default: 1800 seconds)
+- `SSH_ACTIVITY_EXCLUDED_IPS`: Array of IP addresses/CIDR ranges to exclude from SSH/SFTP alerts
+- `TELEGRAMM_LOCK_STATE`: Path to lock file that controls alert sending
 
 For instructions on how to obtain your Telegram `GROUP_ID` and `BOT_TOKEN`, see the section below.
 

@@ -72,10 +72,9 @@ TELEGRAMM_LOCK_STATE="/home/config-sync/telegramm_lock.state"
 #HOST_NAME="MyDebian"
 HOST_NAME=$(hostname)
 
-# SECRETS_FILE: Path to the file containing the Telegram group ID (GROUP_ID) and bot token (BOT_TOKEN).
-# This file is used to securely store the credentials required to send messages to Telegram.
-# If the file does not exist, the script will prompt the user to create it and input the required values.
-SECRETS_FILE="/etc/telegram.secrets"
+# SECRETS_FILE: (Deprecated) No longer used. Credentials must be provided via command line arguments.
+# Use --GROUP-ID and --BOT-TOKEN arguments to provide Telegram credentials.
+# SECRETS_FILE="/etc/telegram.secrets"
 
 
 
@@ -89,6 +88,8 @@ print_help() {
     echo ""
     echo "Options:"
     echo "  --NAME host_name              Specifies a custom identifier for the host being monitored."
+    echo "  --GROUP-ID <group_id>         Specifies the Telegram group ID for sending alerts."
+    echo "  --BOT-TOKEN <bot_token>       Specifies the Telegram bot token for authentication."
     echo "  --CPU <CPU_%>                 Sets the CPU usage percentage threshold for generating an alert."
     echo "  --RAM <RAM_%>                 Sets the RAM usage percentage threshold for generating an alert."
     echo "  --DISK <DISK_%>               Sets the disk usage percentage threshold for generating an alert."
@@ -131,9 +132,11 @@ print_help() {
     echo "which defines specific IPs that are exempt from login alerts."
     echo ""
     echo "Examples:"
-    echo "  $0 --NAME MyServer --CPU 80 --RAM 70 --DISK 90 --TEMP 66 --LA1 2 --LA5 2 --LA15 1"
-    echo "  $0 --NAME MyServer --LA1 --LA5 --LA15 --SSH-LOGIN --SFTP-MONITOR --REBOOT"
-    echo "  $0 --NAME MyServer --DISK 90 --DISK-TARGET /mnt/my_disk"
+    echo "  $0 --GROUP-ID -<your-tg-group-id> --BOT-TOKEN 8590555613:AAH... --NAME MyServer --CPU 80 --RAM 70"
+    echo "  $0 --GROUP-ID -<your-tg-group-id> --BOT-TOKEN 8590555613:AAH... --LA1 --LA5 --LA15 --SSH-LOGIN"
+    echo "  $0 --GROUP-ID -<your-tg-group-id> --BOT-TOKEN 8590555613:AAH... --DISK 90 --DISK-TARGET /mnt/my_disk"
+    echo ""
+    echo "Note: --GROUP-ID and --BOT-TOKEN are required arguments."
     echo ""
 }
 
@@ -178,14 +181,25 @@ test_telegram_connection() {
     return 0
 }
 
-# Function to load secrets from file and check requared software
+# Function to load secrets from command line arguments
 function load_secrets {
-    if [[ ! -f "$SECRETS_FILE" ]]; then
-        check_required_software
-        create_secrets_file
+    # Check if credentials were provided via command line
+    if [[ -n "$CLI_GROUP_ID" && -n "$CLI_BOT_TOKEN" ]]; then
+        GROUP_ID="$CLI_GROUP_ID"
+        BOT_TOKEN="$CLI_BOT_TOKEN"
+        echo "Using Telegram credentials from command line arguments."
+        return 0
     fi
     
-    source "$SECRETS_FILE"
+    # Error if no credentials provided
+    echo ""
+    echo "Error: Telegram credentials are required."
+    echo "Please provide both --GROUP-ID and --BOT-TOKEN arguments."
+    echo ""
+    echo "Example:"
+    echo "  $0 --GROUP-ID -<your-tg-group-id> --BOT-TOKEN 8590555613:AAH... --CPU 80 --RAM 70"
+    echo ""
+    exit 1
 }
 
 # Function to create secret file is it it does not exists
@@ -725,6 +739,24 @@ parse_arguments() {
                 HOST_NAME="$2"
                 shift 2  # Move past the argument and its value
                 ;;
+            --GROUP-ID)
+                # Check if a group ID is provided after --GROUP-ID
+                if [[ -z "$2" ]]; then
+                    echo "Error: --GROUP-ID must be followed by a Telegram group ID."
+                    exit 1
+                fi
+                CLI_GROUP_ID="$2"
+                shift 2
+                ;;
+            --BOT-TOKEN)
+                # Check if a bot token is provided after --BOT-TOKEN
+                if [[ -z "$2" ]]; then
+                    echo "Error: --BOT-TOKEN must be followed by a Telegram bot token."
+                    exit 1
+                fi
+                CLI_BOT_TOKEN="$2"
+                shift 2
+                ;;
             --CPU|--RAM|--DISK|--TEMP)
                 # Check if a numeric threshold is provided after the key
                 if [[ -z "$2" || "$2" == --* ]]; then
@@ -862,12 +894,6 @@ validate_thresholds() {
 
 
 # Main logic
-                
-# Load secrets
-load_secrets
-                
-# API endpoint
-TELEGRAM_API="https://api.telegram.org/bot$BOT_TOKEN/sendMessage" # Normally, there's no need to change it.
 
 # If no arguments are passed, print the help message and exit
 if [ "$#" -eq 0 ]; then
@@ -877,6 +903,12 @@ fi
 
 # Call the parse_arguments function to process command-line arguments
 parse_arguments "$@"
+
+# Load secrets (must be after parse_arguments to access CLI arguments)
+load_secrets
+                
+# API endpoint
+TELEGRAM_API="https://api.telegram.org/bot$BOT_TOKEN/sendMessage" # Normally, there's no need to change it.
 
 # Validate that at least one threshold or monitoring feature is set
 validate_thresholds
