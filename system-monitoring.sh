@@ -44,16 +44,16 @@ SLOW_CHECK_INTERVAL=1800  # 30 minutes in seconds, for less urgent resource chec
 # When the --SSH-LOGIN option is used, the script uses this file to track new SSH logins by
 # comparing the currently active sessions against the previously recorded state. It then updates
 # the file with the latest login information, providing a log for continuous session monitoring.
-SSH_ACTIVITY_LOGINS="/root/ssh_activity_logins.txt"
+SSH_ACTIVITY_LOGINS="${HOME:-/tmp}/ssh_activity_logins.txt"
 
 # SFTP_ACTIVITY_LOGINS specifies the file path used to keep a record of SFTP session details.
-SFTP_ACTIVITY_LOGINS="/root/sftp_activity_logins.txt"
+SFTP_ACTIVITY_LOGINS="${HOME:-/tmp}/sftp_activity_logins.txt"
 
 # LAST_BOOT_TIME_FILE specifies the file path used to record the last boot time of the server.
 # This file is utilized by the --REBOOT option to determine if the server has rebooted since
 # the last recorded timestamp. The script writes the current boot time to this file during each
 # execution and compares it on subsequent runs to detect a reboot occurrence.
-LAST_BOOT_TIME_FILE="/root/last_boot_time.txt"
+LAST_BOOT_TIME_FILE="${HOME:-/tmp}/last_boot_time.txt"
 
 # SSH_ACTIVITY_EXCLUDED_IPS is an array that holds IP addresses or CIDR ranges that should be
 # ignored by the --SSH-LOGIN and --SFTP-MONITOR monitoring feature. When specifying this key, the script will not
